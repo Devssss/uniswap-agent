@@ -21,11 +21,43 @@ import { Address, Name, Avatar, Identity } from '@coinbase/onchainkit/identity';
 
 export default function DEXDashboard() {
   const { address, isConnected } = useAccount();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [dexData, setDexData] = useState([
+    { pair: 'WETH / USDC', dex: 'UNI-V3', dexColor: 'bg-pink-500/10 text-pink-500 border-pink-500/20', tvl: '$482.4M', vol: '$12.8M', spread: '0.002%', trend: 'up' },
+    { pair: 'WBTC / WETH', dex: 'CURVE', dexColor: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20', tvl: '$1.2B', vol: '$34.1M', spread: '0.008%', trend: 'up' },
+    { pair: 'USDT / DAI', dex: 'BALANCER', dexColor: 'bg-blue-500/10 text-blue-500 border-blue-500/20', tvl: '$89.2M', vol: '$1.2M', spread: '0.001%', trend: 'stable' },
+    { pair: 'PEPE / WETH', dex: 'UNI-V2', dexColor: 'bg-pink-500/10 text-pink-500 border-pink-500/20', tvl: '$12.1M', vol: '$8.4M', spread: '0.421%', trend: 'down' },
+    { pair: 'LINK / WETH', dex: 'SUSHI', dexColor: 'bg-orange-500/10 text-orange-500 border-orange-500/20', tvl: '$45.8M', vol: '$0.9M', spread: '0.012%', trend: 'up' },
+  ]);
   const [logs, setLogs] = useState([
     { id: 1, text: 'Scanning Uniswap V3 concentrated liquidity positions...', type: 'active', time: '14:21:04' },
     { id: 2, text: 'Detected volume spike in WBTC/USDC pool. Adjusting range...', type: 'info', time: '14:20:58' },
     { id: 3, text: 'Aggregating DEX data from Sushi, Curve, and Balancer nodes.', type: 'info', time: '14:19:12' },
   ]);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    
+    // Simulate API delay
+    setTimeout(() => {
+      const newLog = {
+        id: Date.now(),
+        text: 'Manual data synchronization triggered. Re-indexing all DEX nodes...',
+        type: 'active',
+        time: new Date().toLocaleTimeString([], { hour12: false }),
+      };
+      setLogs(prev => [newLog, ...prev.slice(0, 5)]);
+      
+      // Slightly randomize TVL/Vol for visual "refresh" feedback
+      setDexData(prev => prev.map(item => ({
+        ...item,
+        vol: `$${(Math.random() * 50).toFixed(1)}M`,
+        spread: `${(Math.random() * 0.01).toFixed(3)}%`
+      })));
+      
+      setIsRefreshing(false);
+    }, 1000);
+  };
 
   useEffect(() => {
     sdk.actions.ready();
@@ -58,6 +90,15 @@ export default function DEXDashboard() {
         </div>
 
         <div className="flex items-center gap-6">
+          <button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-3 py-1.5 bg-[#ffffff05] border border-[#ffffff10] rounded text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-white hover:bg-white/5 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Syncing...' : 'Refresh'}
+          </button>
+
           <div className="hidden md:flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
             <span className="text-xs font-mono uppercase tracking-widest text-emerald-500">ETH Mainnet connected</span>
@@ -162,13 +203,7 @@ export default function DEXDashboard() {
                 </tr>
               </thead>
               <tbody className="text-xs font-mono">
-                {[
-                  { pair: 'WETH / USDC', dex: 'UNI-V3', dexColor: 'bg-pink-500/10 text-pink-500 border-pink-500/20', tvl: '$482.4M', vol: '$12.8M', spread: '0.002%', trend: 'up' },
-                  { pair: 'WBTC / WETH', dex: 'CURVE', dexColor: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20', tvl: '$1.2B', vol: '$34.1M', spread: '0.008%', trend: 'up' },
-                  { pair: 'USDT / DAI', dex: 'BALANCER', dexColor: 'bg-blue-500/10 text-blue-500 border-blue-500/20', tvl: '$89.2M', vol: '$1.2M', spread: '0.001%', trend: 'stable' },
-                  { pair: 'PEPE / WETH', dex: 'UNI-V2', dexColor: 'bg-pink-500/10 text-pink-500 border-pink-500/20', tvl: '$12.1M', vol: '$8.4M', spread: '0.421%', trend: 'down' },
-                  { pair: 'LINK / WETH', dex: 'SUSHI', dexColor: 'bg-orange-500/10 text-orange-500 border-orange-500/20', tvl: '$45.8M', vol: '$0.9M', spread: '0.012%', trend: 'up' },
-                ].map((item, i) => (
+                {dexData.map((item, i) => (
                   <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] group transition-colors">
                     <td className="py-4 text-white font-sans font-medium">{item.pair}</td>
                     <td className="py-4">

@@ -9,8 +9,11 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@coinbase/onchainkit": "^1.0.0",
+    "@farcaster/miniapp-sdk": "latest",
     "@google/genai": "^1.17.0",
     "@hookform/resolvers": "^5.2.1",
+    "@tanstack/react-query": "^5.62.7",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -20,12 +23,11 @@
     "postcss": "^8.5.6",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.3.1",
-    "@coinbase/onchainkit": "^1.0.0",
     "viem": "^2.27.0",
-    "wagmi": "^2.16.0",
-    "@tanstack/react-query": "^5.62.7",
-    "@farcaster/miniapp-sdk": "latest"
+    "wagmi": "^2.16.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.11",
