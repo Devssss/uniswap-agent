@@ -13,7 +13,10 @@ import {
   ChevronRight,
   Database,
   RefreshCw,
-  Power
+  Power,
+  Search,
+  Filter,
+  X
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { ConnectWallet, Wallet as OnchainWallet, WalletDropdown, WalletDropdownDisconnect, WalletDropdownLink } from '@coinbase/onchainkit/wallet';
@@ -22,6 +25,12 @@ import { Address, Name, Avatar, Identity } from '@coinbase/onchainkit/identity';
 export default function DEXDashboard() {
   const { address, isConnected } = useAccount();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [dexFilter, setDexFilter] = useState('ALL');
+  const [tvlRange, setTvlRange] = useState({ min: 0, max: 2000 }); // in Millions
+  const [volRange, setVolRange] = useState({ min: 0, max: 100 }); // in Millions
+  const [showFilters, setShowFilters] = useState(false);
+
   const [dexData, setDexData] = useState([
     { pair: 'WETH / USDC', dex: 'UNI-V3', dexColor: 'bg-pink-500/10 text-pink-500 border-pink-500/20', tvl: '$482.4M', vol: '$12.8M', spread: '0.002%', trend: 'up' },
     { pair: 'WBTC / WETH', dex: 'CURVE', dexColor: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20', tvl: '$1.2B', vol: '$34.1M', spread: '0.008%', trend: 'up' },
@@ -58,6 +67,26 @@ export default function DEXDashboard() {
       setIsRefreshing(false);
     }, 1000);
   };
+
+  const parseValue = (val: string) => {
+    const numeric = parseFloat(val.replace(/[^0-9.-]/g, ''));
+    if (val.includes('B')) return numeric * 1000;
+    return numeric;
+  };
+
+  const filteredData = dexData.filter(item => {
+    const matchesSearch = item.pair.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          item.dex.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDex = dexFilter === 'ALL' || item.dex.includes(dexFilter);
+    
+    const tvlVal = parseValue(item.tvl);
+    const volVal = parseValue(item.vol);
+    
+    const matchesTVL = tvlVal >= tvlRange.min && tvlVal <= tvlRange.max;
+    const matchesVol = volVal >= volRange.min && volVal <= volRange.max;
+
+    return matchesSearch && matchesDex && matchesTVL && matchesVol;
+  });
 
   useEffect(() => {
     sdk.actions.ready();
@@ -192,6 +221,108 @@ export default function DEXDashboard() {
           </div>
           
           <div className="flex-1 p-6 overflow-x-auto">
+            {/* Filters UI */}
+            <div className="mb-6 flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="relative flex-1 min-w-[240px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input 
+                    type="text"
+                    placeholder="Search asset pairs or DEX..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-[#ffffff05] border border-[#ffffff10] rounded-sm py-2 pl-10 pr-4 text-xs font-mono focus:outline-none focus:border-brand-accent/50 transition-colors"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                
+                <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-sm text-xs font-bold uppercase tracking-widest transition-all ${showFilters ? 'bg-brand-accent text-brand-bg' : 'bg-[#ffffff05] border border-[#ffffff10] text-zinc-400 hover:text-white'}`}
+                >
+                  <Filter className="w-3 h-3" />
+                  Filters
+                </button>
+              </div>
+
+              <AnimatePresence>
+                {showFilters && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-4 border border-brand-border-muted bg-white/[0.02] rounded-sm mt-2">
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">DEX Source</label>
+                        <div className="flex flex-wrap gap-2">
+                          {['ALL', 'UNI', 'CURVE', 'BALANCER', 'SUSHI'].map((dex) => (
+                            <button
+                              key={dex}
+                              onClick={() => setDexFilter(dex)}
+                              className={`px-3 py-1 text-[10px] font-mono border transition-all ${dexFilter === dex ? 'bg-brand-accent/20 border-brand-accent text-brand-accent' : 'border-[#ffffff10] text-zinc-500 hover:text-zinc-300'}`}
+                            >
+                              {dex}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">TVL Range ($M)</label>
+                        <div className="flex items-center gap-4">
+                          <input 
+                            type="number"
+                            value={tvlRange.min}
+                            onChange={(e) => setTvlRange({ ...tvlRange, min: parseInt(e.target.value) || 0 })}
+                            className="w-1/2 bg-[#ffffff05] border border-[#ffffff10] rounded-sm p-2 text-xs font-mono focus:outline-none"
+                            placeholder="Min"
+                          />
+                          <span className="text-zinc-600">-</span>
+                          <input 
+                            type="number"
+                            value={tvlRange.max}
+                            onChange={(e) => setTvlRange({ ...tvlRange, max: parseInt(e.target.value) || 0 })}
+                            className="w-1/2 bg-[#ffffff05] border border-[#ffffff10] rounded-sm p-2 text-xs font-mono focus:outline-none"
+                            placeholder="Max"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">24h Vol Range ($M)</label>
+                        <div className="flex items-center gap-4">
+                          <input 
+                            type="number"
+                            value={volRange.min}
+                            onChange={(e) => setVolRange({ ...volRange, min: parseInt(e.target.value) || 0 })}
+                            className="w-1/2 bg-[#ffffff05] border border-[#ffffff10] rounded-sm p-2 text-xs font-mono focus:outline-none"
+                            placeholder="Min"
+                          />
+                          <span className="text-zinc-600">-</span>
+                          <input 
+                            type="number"
+                            value={volRange.max}
+                            onChange={(e) => setVolRange({ ...volRange, max: parseInt(e.target.value) || 0 })}
+                            className="w-1/2 bg-[#ffffff05] border border-[#ffffff10] rounded-sm p-2 text-xs font-mono focus:outline-none"
+                            placeholder="Max"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
             <table className="w-full">
               <thead>
                 <tr class="text-left text-[10px] font-bold text-brand-text-muted uppercase tracking-widest">
@@ -203,7 +334,7 @@ export default function DEXDashboard() {
                 </tr>
               </thead>
               <tbody className="text-xs font-mono">
-                {dexData.map((item, i) => (
+                {filteredData.map((item, i) => (
                   <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] group transition-colors">
                     <td className="py-4 text-white font-sans font-medium">{item.pair}</td>
                     <td className="py-4">
