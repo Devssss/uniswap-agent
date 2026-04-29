@@ -570,18 +570,28 @@ export default function DEXDashboard() {
                   </p>
                 </div>
                 
-                <div className="mt-3 flex justify-between items-center">
-                  <div className="flex gap-1">
-                    <div className={`w-1 h-1 rounded-full ${alert.type === 'success' ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
-                    <div className={`w-1 h-1 rounded-full ${alert.type === 'success' ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse delay-75`} />
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <button className="flex-1 text-[9px] font-bold uppercase tracking-widest py-1.5 rounded-sm border border-white/10 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 transition-all">
+                      Analyze Further
+                    </button>
+                    <button className="flex-1 text-[9px] font-bold uppercase tracking-widest py-1.5 rounded-sm border border-white/10 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10 transition-all">
+                      View Pool Details
+                    </button>
                   </div>
-                  <button className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm border transition-all ${
-                    alert.type === 'success' 
-                      ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
-                      : 'border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
-                  }`}>
-                    Execute Alpha
-                  </button>
+                  <div className="flex justify-between items-center bg-white/5 p-1.5 rounded-sm border border-white/5 shadow-inner">
+                    <div className="flex gap-1">
+                      <div className={`w-1.5 h-1.5 rounded-full ${alert.type === 'success' ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
+                      <div className={`w-1.5 h-1.5 rounded-full ${alert.type === 'success' ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse delay-75`} />
+                    </div>
+                    <button className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-sm border transition-all ${
+                      alert.type === 'success' 
+                        ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                        : 'border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                    }`}>
+                      Execute Alpha
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>
