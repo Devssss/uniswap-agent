@@ -18,11 +18,13 @@ import {
   Filter,
   X,
   Bell,
-  AlertTriangle
+  AlertTriangle,
+  LineChart as LineChartIcon
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { ConnectWallet, Wallet as OnchainWallet, WalletDropdown, WalletDropdownDisconnect, WalletDropdownLink } from '@coinbase/onchainkit/wallet';
 import { Address, Name, Avatar, Identity } from '@coinbase/onchainkit/identity';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function DEXDashboard() {
   const { address, isConnected } = useAccount();
@@ -34,6 +36,8 @@ export default function DEXDashboard() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeAlerts, setActiveAlerts] = useState<{id: string; title: string; pair: string; dex: string; reason: string; type: 'success' | 'warning'}[]>([]);
   const [maxAlerts, setMaxAlerts] = useState(3);
+  const [selectedPair, setSelectedPair] = useState<string | null>(null);
+  const [chartData, setChartData] = useState<{time: string; price: number}[]>([]);
 
   const handleMaxAlertsChange = (val: number) => {
     setMaxAlerts(val);
@@ -52,6 +56,27 @@ export default function DEXDashboard() {
     { id: 2, text: 'Detected volume spike in WBTC/USDC pool. Adjusting range...', type: 'info', time: '14:20:58' },
     { id: 3, text: 'Aggregating DEX data from Sushi, Curve, and Balancer nodes.', type: 'info', time: '14:19:12' },
   ]);
+
+  const [selectedPair, setSelectedPair] = useState<string | null>(dexData[0].pair);
+  const [chartData, setChartData] = useState<{time: string; price: number}[]>([]);
+
+  const generateChartData = useCallback((pair: string) => {
+    const data = [];
+    let basePrice = pair.includes('ETH') ? 2482 : pair.includes('BTC') ? 64000 : 1;
+    for (let i = 0; i < 20; i++) {
+        data.push({
+            time: `${14 + Math.floor(i/4)}:${(i%4)*15}`,
+            price: basePrice + (Math.random() - 0.5) * (basePrice * 0.01)
+        });
+    }
+    setChartData(data);
+  }, [setChartData]);
+
+  useEffect(() => {
+    if (selectedPair) {
+        generateChartData(selectedPair);
+    }
+  }, [selectedPair, generateChartData]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -166,10 +191,20 @@ export default function DEXDashboard() {
       if (Math.random() > 0.7) {
         scanForOpportunities();
       }
+
+      // Live chart update Simulation
+      if (selectedPair) {
+        setChartData(prev => {
+            const last = prev[prev.length - 1];
+            const nextPrice = last.price + (Math.random() - 0.5) * (last.price * 0.002);
+            const nextTime = new Date().toLocaleTimeString([], { hour12: false, minute: '2-digit', second: '2-digit' });
+            return [...prev.slice(1), { time: nextTime, price: nextPrice }];
+        });
+      }
     }, 8000);
 
     return () => clearInterval(interval);
-  }, [scanForOpportunities]);
+  }, [scanForOpportunities, selectedPair, setChartData]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-brand-bg selection:bg-brand-accent/30">
@@ -389,6 +424,60 @@ export default function DEXDashboard() {
               </AnimatePresence>
             </div>
 
+            <div className="mb-8 p-4 border border-brand-border-muted bg-white/[0.01] rounded-sm relative group">
+               <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-3">
+                     <TrendingUp className="w-4 h-4 text-brand-accent" />
+                     <h3 className="text-xs font-bold uppercase tracking-widest text-white">{selectedPair || 'Select a pair'} Performance</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                     <span className="text-[10px] font-mono text-zinc-500 uppercase">Live Indexing</span>
+                  </div>
+               </div>
+               <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
+                      <XAxis 
+                        dataKey="time" 
+                        fontSize={10} 
+                        tick={{ fill: '#71717a' }} 
+                        axisLine={false} 
+                        tickLine={false}
+                      />
+                      <YAxis 
+                        domain={['auto', 'auto']} 
+                        fontSize={10} 
+                        tick={{ fill: '#71717a' }} 
+                        axisLine={false} 
+                        tickLine={false}
+                        tickFormatter={(value) => `$${value.toLocaleString()}`}
+                      />
+                      <Tooltip 
+                        contentStyle={{ 
+                          backgroundColor: '#0a0a0a', 
+                          border: '1px solid #ffffff10',
+                          borderRadius: '2px',
+                          fontSize: '10px',
+                          fontFamily: 'monospace'
+                        }}
+                        itemStyle={{ color: '#06b6d4' }}
+                      />
+                      <Line 
+                        type="monotone" 
+                        dataKey="price" 
+                        stroke="#06b6d4" 
+                        strokeWidth={2} 
+                        dot={false}
+                        animationDuration={1000}
+                        activeDot={{ r: 4, fill: '#06b6d4' }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+               </div>
+            </div>
+
             <table className="w-full">
               <thead>
                 <tr class="text-left text-[10px] font-bold text-brand-text-muted uppercase tracking-widest">
@@ -401,7 +490,11 @@ export default function DEXDashboard() {
               </thead>
               <tbody className="text-xs font-mono">
                 {filteredData.map((item, i) => (
-                  <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] group transition-colors">
+                  <tr 
+                    key={i} 
+                    onClick={() => setSelectedPair(item.pair)}
+                    className={`border-b border-white/[0.03] hover:bg-white/[0.02] group transition-colors cursor-pointer ${selectedPair === item.pair ? 'bg-brand-accent/5 border-l-2 border-l-brand-accent' : ''}`}
+                  >
                     <td className="py-4 text-white font-sans font-medium">{item.pair}</td>
                     <td className="py-4">
                       <span className={`px-2 py-0.5 border rounded-sm text-[10px] ${item.dexColor}`}>
