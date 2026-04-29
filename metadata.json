@@ -1,0 +1,6 @@
+{
+  "name": "Sentinel AI",
+  "description": "Eth Uniswap Liquidity AI Agent dashboard. Aggregating DEX data and scanning for opportunities with Sentinel.AI",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
