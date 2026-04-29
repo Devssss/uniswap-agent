@@ -33,6 +33,12 @@ export default function DEXDashboard() {
   const [volRange, setVolRange] = useState({ min: 0, max: 100 }); // in Millions
   const [showFilters, setShowFilters] = useState(false);
   const [activeAlerts, setActiveAlerts] = useState<{id: string; title: string; pair: string; dex: string; reason: string; type: 'success' | 'warning'}[]>([]);
+  const [maxAlerts, setMaxAlerts] = useState(3);
+
+  const handleMaxAlertsChange = (val: number) => {
+    setMaxAlerts(val);
+    setActiveAlerts(prev => prev.slice(0, val));
+  };
 
   const [dexData, setDexData] = useState([
     { pair: 'WETH / USDC', dex: 'UNI-V3', dexColor: 'bg-pink-500/10 text-pink-500 border-pink-500/20', tvl: '$482.4M', vol: '$12.8M', spread: '0.002%', trend: 'up' },
@@ -138,10 +144,10 @@ export default function DEXDashboard() {
       setActiveAlerts(prev => {
         // Prevent duplicate alerts for the same pair in a short window
         if (prev.some(a => a.pair === newAlert.pair)) return prev;
-        return [newAlert, ...prev].slice(0, 3);
+        return [newAlert, ...prev].slice(0, maxAlerts);
       });
     }
-  }, [dexData]);
+  }, [dexData, maxAlerts]);
 
   useEffect(() => {
     sdk.actions.ready();
@@ -460,6 +466,22 @@ export default function DEXDashboard() {
                    <span className="text-xl font-mono text-white">$4.2B</span>
                    <span className="text-xs text-brand-text-muted font-sans font-normal uppercase">24HR Aggregated</span>
                  </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/[0.03]">
+                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block mb-3">Alert Limit</label>
+                 <div className="flex items-center gap-3">
+                   <input 
+                     type="range" 
+                     min="1" 
+                     max="10" 
+                     value={maxAlerts}
+                     onChange={(e) => handleMaxAlertsChange(parseInt(e.target.value))}
+                     className="flex-1 accent-brand-accent h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                   />
+                   <span className="text-xs font-mono text-brand-accent w-4">{maxAlerts}</span>
+                 </div>
+                 <p className="text-[9px] text-zinc-600 mt-2 italic">Max concurrent active notifications</p>
               </div>
             </div>
           </div>
