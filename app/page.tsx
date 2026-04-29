@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import sdk from '@farcaster/miniapp-sdk';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -16,7 +16,9 @@ import {
   Power,
   Search,
   Filter,
-  X
+  X,
+  Bell,
+  AlertTriangle
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 import { ConnectWallet, Wallet as OnchainWallet, WalletDropdown, WalletDropdownDisconnect, WalletDropdownLink } from '@coinbase/onchainkit/wallet';
@@ -30,6 +32,7 @@ export default function DEXDashboard() {
   const [tvlRange, setTvlRange] = useState({ min: 0, max: 2000 }); // in Millions
   const [volRange, setVolRange] = useState({ min: 0, max: 100 }); // in Millions
   const [showFilters, setShowFilters] = useState(false);
+  const [activeAlerts, setActiveAlerts] = useState<{id: string; title: string; pair: string; dex: string; reason: string; type: 'success' | 'warning'}[]>([]);
 
   const [dexData, setDexData] = useState([
     { pair: 'WETH / USDC', dex: 'UNI-V3', dexColor: 'bg-pink-500/10 text-pink-500 border-pink-500/20', tvl: '$482.4M', vol: '$12.8M', spread: '0.002%', trend: 'up' },
@@ -58,12 +61,16 @@ export default function DEXDashboard() {
       setLogs(prev => [newLog, ...prev.slice(0, 5)]);
       
       // Slightly randomize TVL/Vol for visual "refresh" feedback
-      setDexData(prev => prev.map(item => ({
-        ...item,
-        vol: `$${(Math.random() * 50).toFixed(1)}M`,
-        spread: `${(Math.random() * 0.01).toFixed(3)}%`
-      })));
+      setDexData(prev => {
+        const next = prev.map(item => ({
+          ...item,
+          vol: `$${(Math.random() * 50).toFixed(1)}M`,
+          spread: `${(Math.random() * 0.01).toFixed(3)}%`
+        }));
+        return next;
+      });
       
+      scanForOpportunities();
       setIsRefreshing(false);
     }, 1000);
   };
@@ -104,6 +111,38 @@ export default function DEXDashboard() {
     }
   };
 
+  const removeAlert = (id: string) => {
+    setActiveAlerts(prev => prev.filter(a => a.id !== id));
+  };
+
+  const scanForOpportunities = useCallback(() => {
+    const opportunities = dexData.filter(item => {
+      const spread = parseFloat(item.spread);
+      const vol = parseValue(item.vol);
+      return spread < 0.005 || vol > 30;
+    });
+
+    if (opportunities.length > 0) {
+      const randomOpp = opportunities[Math.floor(Math.random() * opportunities.length)];
+      const spread = parseFloat(randomOpp.spread);
+      
+      const newAlert = {
+        id: Math.random().toString(36).substring(7),
+        title: spread < 0.005 ? 'High Efficiency Trade' : 'Volume Breakout',
+        pair: randomOpp.pair,
+        dex: randomOpp.dex,
+        reason: spread < 0.005 ? `Optimal spread detected (${randomOpp.spread})` : `High institutional flow ($${randomOpp.vol})`,
+        type: spread < 0.005 ? 'success' : 'warning' as const
+      };
+
+      setActiveAlerts(prev => {
+        // Prevent duplicate alerts for the same pair in a short window
+        if (prev.some(a => a.pair === newAlert.pair)) return prev;
+        return [newAlert, ...prev].slice(0, 3);
+      });
+    }
+  }, [dexData]);
+
   useEffect(() => {
     sdk.actions.ready();
     
@@ -116,10 +155,15 @@ export default function DEXDashboard() {
         time: new Date().toLocaleTimeString([], { hour12: false }),
       };
       setLogs(prev => [newLog, ...prev.slice(0, 5)]);
+      
+      // Periodic scan
+      if (Math.random() > 0.7) {
+        scanForOpportunities();
+      }
     }, 8000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [scanForOpportunities]);
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-brand-bg selection:bg-brand-accent/30">
@@ -456,6 +500,72 @@ export default function DEXDashboard() {
           Build v2.4.1-Stable // Encrypted Protocol v2
         </div>
       </footer>
+
+      {/* Alert System Overlay */}
+      <div className="fixed top-20 right-4 z-50 flex flex-col gap-3 pointer-events-none">
+        <AnimatePresence>
+          {activeAlerts.map((alert) => (
+            <motion.div
+              key={alert.id}
+              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.95 }}
+              className="pointer-events-auto"
+            >
+              <div className={`w-80 p-4 border border-white/10 shadow-2xl backdrop-blur-xl relative overflow-hidden group ${
+                alert.type === 'success' ? 'bg-emerald-950/40 border-emerald-500/30' : 'bg-amber-950/40 border-amber-500/30'
+              }`}>
+                {/* Visual accents */}
+                <div className={`absolute top-0 left-0 w-1 h-full ${
+                  alert.type === 'success' ? 'bg-emerald-500' : 'bg-amber-500'
+                }`} />
+                
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2">
+                    {alert.type === 'success' ? (
+                      <Zap className="w-4 h-4 text-emerald-400" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    )}
+                    <span className={`text-[10px] font-bold uppercase tracking-widest ${
+                      alert.type === 'success' ? 'text-emerald-400' : 'text-amber-400'
+                    }`}>
+                      {alert.title}
+                    </span>
+                  </div>
+                  <button 
+                    onClick={() => removeAlert(alert.id)}
+                    className="text-white/30 hover:text-white transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="space-y-1">
+                  <h4 className="text-white text-xs font-bold font-mono">{alert.pair} <span className="text-white/40 font-normal">on</span> {alert.dex}</h4>
+                  <p className="text-[10px] text-zinc-400 leading-tight">
+                    {alert.reason}
+                  </p>
+                </div>
+                
+                <div className="mt-3 flex justify-between items-center">
+                  <div className="flex gap-1">
+                    <div className={`w-1 h-1 rounded-full ${alert.type === 'success' ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
+                    <div className={`w-1 h-1 rounded-full ${alert.type === 'success' ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse delay-75`} />
+                  </div>
+                  <button className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm border transition-all ${
+                    alert.type === 'success' 
+                      ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' 
+                      : 'border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                  }`}>
+                    Execute Alpha
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
