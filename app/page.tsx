@@ -26,7 +26,7 @@ export default function DEXDashboard() {
   const { address, isConnected } = useAccount();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dexFilter, setDexFilter] = useState('ALL');
+  const [selectedDexes, setSelectedDexes] = useState(['ALL']);
   const [tvlRange, setTvlRange] = useState({ min: 0, max: 2000 }); // in Millions
   const [volRange, setVolRange] = useState({ min: 0, max: 100 }); // in Millions
   const [showFilters, setShowFilters] = useState(false);
@@ -77,7 +77,7 @@ export default function DEXDashboard() {
   const filteredData = dexData.filter(item => {
     const matchesSearch = item.pair.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           item.dex.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDex = dexFilter === 'ALL' || item.dex.includes(dexFilter);
+    const matchesDex = selectedDexes.includes('ALL') || selectedDexes.some(d => item.dex.includes(d));
     
     const tvlVal = parseValue(item.tvl);
     const volVal = parseValue(item.vol);
@@ -87,6 +87,22 @@ export default function DEXDashboard() {
 
     return matchesSearch && matchesDex && matchesTVL && matchesVol;
   });
+
+  const toggleDex = (dex: string) => {
+    if (dex === 'ALL') {
+      setSelectedDexes(['ALL']);
+    } else {
+      setSelectedDexes(prev => {
+        const filtered = prev.filter(d => d !== 'ALL');
+        if (filtered.includes(dex)) {
+          const next = filtered.filter(d => d !== dex);
+          return next.length === 0 ? ['ALL'] : next;
+        } else {
+          return [...filtered, dex];
+        }
+      });
+    }
+  };
 
   useEffect(() => {
     sdk.actions.ready();
@@ -267,8 +283,8 @@ export default function DEXDashboard() {
                           {['ALL', 'UNI', 'CURVE', 'BALANCER', 'SUSHI'].map((dex) => (
                             <button
                               key={dex}
-                              onClick={() => setDexFilter(dex)}
-                              className={`px-3 py-1 text-[10px] font-mono border transition-all ${dexFilter === dex ? 'bg-brand-accent/20 border-brand-accent text-brand-accent' : 'border-[#ffffff10] text-zinc-500 hover:text-zinc-300'}`}
+                              onClick={() => toggleDex(dex)}
+                              className={`px-3 py-1 text-[10px] font-mono border transition-all ${selectedDexes.includes(dex) ? 'bg-brand-accent/20 border-brand-accent text-brand-accent' : 'border-[#ffffff10] text-zinc-500 hover:text-zinc-300'}`}
                             >
                               {dex}
                             </button>
